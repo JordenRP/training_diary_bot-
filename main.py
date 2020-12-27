@@ -1,4 +1,7 @@
 from telegram import Update
+from telegram import KeyboardButton
+from telegram import ReplyKeyboardMarkup
+from telegram import ReplyKeyboardRemove
 
 from telegram.ext import Updater
 from telegram.ext import MessageHandler
@@ -14,7 +17,10 @@ db = Db('test')
 EXERCISE_NAME, WEIGTH, REP  = range(3)
 
 def start (update: Update, context: CallbackContext) -> int:
-    update.message.reply_text('Введите название упражнения')
+    update.message.reply_text(
+        'Введите название упражнения', 
+        reply_markup = ReplyKeyboardRemove()
+    )
 
     return EXERCISE_NAME
 
@@ -48,7 +54,22 @@ def canel(update: Update, context: CallbackContext) -> int:
     update.message.reply_text('Тренеровка завершена')
 
     return ConversationHandler.END
- 
+
+def init_train(update: Update, context: CallbackContext):
+    button = [[KeyboardButton("Добавить упражнение")], [KeyboardButton("Начать тренеровку")]]
+
+    update.effective_message.reply_text(
+        'Начнем тренеровку' ,reply_markup=ReplyKeyboardMarkup(button, resize_keyboard=True)
+    )
+
+def btn_handler(update: Update, context: CallbackContext):
+    text = update.message.text
+
+    if text == 'Добавить упражнение':
+        update.message.reply_text(
+            'Добавим завтра',
+            reply_markup = ReplyKeyboardRemove()
+        ) 
 
 def main ():
     updater = Updater(
@@ -56,7 +77,7 @@ def main ():
     )
 
     conversation = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[MessageHandler(Filters.text('Начать тренеровку'), start)],
         states={
             EXERCISE_NAME: [MessageHandler(Filters.regex('^\w+$'), exercise_name)],
             WEIGTH: [MessageHandler(Filters.regex('^\d+$'), weight)],
@@ -68,6 +89,9 @@ def main ():
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(conversation)
+    dispatcher.add_handler(CommandHandler('start', init_train))
+    dispatcher.add_handler(MessageHandler(Filters.all, btn_handler))
+
 
     updater.start_polling()
     updater.idle()
